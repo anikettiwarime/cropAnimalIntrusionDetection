@@ -8,6 +8,10 @@ import {
   useCameraPermission,
   PhotoFile,
 } from 'react-native-vision-camera';
+import axios, {AxiosError} from 'axios';
+
+const BASE_URL = 'https://f4853z95-8000.inc1.devtunnels.ms';
+const test_img = Image.resolveAssetSource(require('../images/test.jpeg')).uri;
 
 const CameraScreen = () => {
   const cameraRef = useRef<Camera>(null);
@@ -53,16 +57,44 @@ const CameraScreen = () => {
         if (cameraRef.current) {
           try {
             if (capturedPhoto) {
-              await RNFS.unlink(capturedPhoto.path);
+              // await RNFS.unlink(capturedPhoto.path);
             }
 
             const photo = await cameraRef.current.takePhoto({flash: 'auto'});
             setCapturedPhoto(photo);
+
+            // console.log('Photo taken:', photo.path);
+            const formData = new FormData();
+
+            // formData.append('image', {
+            //   uri:
+            //     Platform.OS === 'android'
+            //       ? photo.path
+            //       : photo.path.replace('file://', ''),
+            //   name: 'photo.jpg',
+            //   type: 'image/jpeg',
+            // });
+
+            formData.append('image', {
+              uri: test_img,
+              name: 'photo.jpg',
+              type: 'image/jpeg',
+            });
+
+            // const res = await axios.get(`${BASE_URL}/api/`);
+            // console.log(res.data);
+
+            const response = await axios.post(
+              `${BASE_URL}/api/predict/`,
+              formData,
+            );
+            console.log('Response:', response.data);
           } catch (err) {
-            console.log('Failed to take photo:', err);
+            console.log(err);
+            console.log(new AxiosError(err as any));
           }
         }
-      }, 5000);
+      }, 3000);
 
       return () => clearInterval(intervalId);
     }
