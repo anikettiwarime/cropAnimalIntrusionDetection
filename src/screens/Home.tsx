@@ -28,6 +28,7 @@ const HomeScreen: React.FC<Props> = ({navigation}) => {
 
   const handleViewReports = () => {
     // Navigate to view reports screen if needed
+    navigation.navigate('Reports');
   };
 
   return (
@@ -36,7 +37,7 @@ const HomeScreen: React.FC<Props> = ({navigation}) => {
         uri: LOGO_IMG,
       }}
       style={styles.backgroundImage}>
-      <Text style={styles.title}>Animal Intrusion Detection App</Text>
+      <Text style={styles.title}>Animal Intrusion Detection System for Crop Protection</Text>
       <View style={styles.buttonContainer}>
         <TouchableOpacity style={styles.button} onPress={handleStartMonitoring}>
           <Text style={styles.text}>Start Monitoring</Text>

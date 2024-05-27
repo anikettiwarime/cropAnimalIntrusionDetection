@@ -1,6 +1,5 @@
 import React, {useEffect, useRef, useState} from 'react';
 import RNFS from 'react-native-fs';
-
 import {View, Text, StyleSheet, Image, Platform, Button} from 'react-native';
 import {
   useCameraDevice,
@@ -8,27 +7,32 @@ import {
   useCameraPermission,
   PhotoFile,
 } from 'react-native-vision-camera';
-import axios, {AxiosError} from 'axios';
+import axios from 'axios';
 
+// Base URL for the backend server
 const BASE_URL = 'https://f4853z95-8000.inc1.devtunnels.ms';
-const test_img = Image.resolveAssetSource(require('../images/test.jpeg')).uri;
+
+// Dummy image URI for testing (not used in this version)
+// const test_img = Image.resolveAssetSource(require('../images/test.jpeg')).uri;
 
 const CameraScreen = () => {
   const cameraRef = useRef<Camera>(null);
   const [cameraPosition, setCameraPosition] = useState<'front' | 'back'>(
-    'front',
+    'back',
   );
   const device = useCameraDevice(cameraPosition);
   const {hasPermission, requestPermission} = useCameraPermission();
   const [capturedPhoto, setCapturedPhoto] = useState<PhotoFile>();
   const [currentTime, setCurrentTime] = useState(new Date());
 
+  // Function to toggle between front and back camera
   const toggleCameraPosition = () => {
     setCameraPosition(prevPosition =>
       prevPosition === 'front' ? 'back' : 'front',
     );
   };
 
+  // Request camera permission on component mount
   useEffect(() => {
     const requestCameraPermission = async () => {
       if (!hasPermission) {
@@ -43,6 +47,7 @@ const CameraScreen = () => {
     requestCameraPermission();
   }, [hasPermission, requestPermission]);
 
+  // Update current time every second
   useEffect(() => {
     const intervalId = setInterval(() => {
       setCurrentTime(new Date());
@@ -51,55 +56,51 @@ const CameraScreen = () => {
     return () => clearInterval(intervalId);
   }, []);
 
+  // Capture photo and send it to the backend periodically
   useEffect(() => {
     if (hasPermission) {
       const intervalId = setInterval(async () => {
         if (cameraRef.current) {
           try {
-            if (capturedPhoto) {
-              // await RNFS.unlink(capturedPhoto.path);
-            }
-
+            // Capture photo
             const photo = await cameraRef.current.takePhoto({flash: 'auto'});
             setCapturedPhoto(photo);
 
-            // console.log('Photo taken:', photo.path);
+            // Save the photo to local filesystem
+            const fileUri = `${RNFS.DocumentDirectoryPath}/photo.jpg`;
+            await RNFS.copyFile(photo.path, fileUri);
+
+            // Prepare FormData object for image upload
             const formData = new FormData();
-
-            // formData.append('image', {
-            //   uri:
-            //     Platform.OS === 'android'
-            //       ? photo.path
-            //       : photo.path.replace('file://', ''),
-            //   name: 'photo.jpg',
-            //   type: 'image/jpeg',
-            // });
-
             formData.append('image', {
-              uri: test_img,
+              uri: `file://${fileUri}`,
               name: 'photo.jpg',
               type: 'image/jpeg',
             });
 
-            // const res = await axios.get(`${BASE_URL}/api/`);
-            // console.log(res.data);
-
+            // Send photo to backend
             const response = await axios.post(
               `${BASE_URL}/api/predict/`,
               formData,
+              {
+                headers: {'Content-Type': 'multipart/form-data'},
+              },
             );
             console.log('Response:', response.data);
+
+            // Optionally, delete the captured photo after sending
+            await RNFS.unlink(photo.path);
           } catch (err) {
             console.log(err);
-            console.log(new AxiosError(err as any));
           }
         }
-      }, 3000);
+      }, 8000);
 
       return () => clearInterval(intervalId);
     }
-  }, [capturedPhoto, hasPermission]);
+  }, [hasPermission]);
 
+  // Render camera preview and controls
   if (!device) {
     return <NotFound />;
   }
@@ -143,18 +144,21 @@ const CameraScreen = () => {
   );
 };
 
+// Component to render when camera is not found
 const NotFound = () => (
   <View style={styles.container}>
     <Text style={styles.text}>Camera not found</Text>
   </View>
 );
 
+// Component to render while requesting camera permission
 const RequestPermission = () => (
   <View style={styles.container}>
     <Text style={styles.text}>Requesting camera permission</Text>
   </View>
 );
 
+// Component to render the captured photo preview
 const PreviewImage = ({capturedPhoto}: {capturedPhoto: PhotoFile}) => (
   <View style={styles.previewImageContainer}>
     <Image
@@ -169,6 +173,7 @@ const PreviewImage = ({capturedPhoto}: {capturedPhoto: PhotoFile}) => (
   </View>
 );
 
+// Styles for the components
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -202,7 +207,7 @@ const styles = StyleSheet.create({
   previewImage: {
     flex: 1,
     aspectRatio: 1,
-    transform: [{rotate: '90deg'}],
+    transform: [{rotate: '0deg'}],
   },
   timeContainer: {
     marginBottom: 5,
